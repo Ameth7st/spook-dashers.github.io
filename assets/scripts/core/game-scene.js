@@ -4073,7 +4073,7 @@ _buildSettingsPopup() {
       { text: "is this update finally out?", scale: 0.65, color: 0xaaddff },
       { text: "- rohanis0000", scale: 0.65, color: 0xaaddff },
       { text: "nope. also uhh-", scale: 0.65, color: 0xaaddff },
-      { text: "-god i hope this doesnt break anything...", scale: 0.65, color: 0xaaddff },
+      { text: "i hope this doesnt break anything!!", scale: 0.65, color: 0xaaddff },
       { text: "- ameth7st", scale: 0.65, color: 0xaaddff },
     ]; 
     let yPos = 0;

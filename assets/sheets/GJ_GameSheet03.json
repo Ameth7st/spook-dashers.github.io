@@ -3916,7 +3916,7 @@
                     }
                 },
                 {
-                    "filename": "GJ_secretLock_001.png",
+                    "filename": "GJ_secretLock_0001.png",
                     "rotated": true,
                     "trimmed": true,
                     "sourceSize": {
@@ -9583,6 +9583,27 @@
                         "y": 356,
                         "w": 246,
                         "h": 66
+                    }
+                },
+                {
+                    "filename": "GJ_secretLock_001.png",
+                    "rotated": true,
+                    "trimmed": false,
+                    "sourceSize": {
+                        "w": 236,
+                        "h": 30
+                    },
+                    "spriteSourceSize": {
+                        "x": 0,
+                        "y": 0,
+                        "w": 236,
+                        "h": 30
+                    },
+                    "frame": {
+                        "x": 1153,
+                        "y": 465,
+                        "w": 262,
+                        "h": 128
                     }
                 },
                 {

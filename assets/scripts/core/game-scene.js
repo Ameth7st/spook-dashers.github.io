@@ -2422,9 +2422,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         overlay.add([secretPlayLabel, secretPlayButton]);
       };
 
-      const lockSprite = this.add.image(cx, sh * 0.56, "secretLock_01")
+      const lockSprite = this.add.image(cx, sh * 0.56, "GJ_GameSheet03", "GJ_secretLock_001.png")
         .setScrollFactor(0)
-        .setDepth(315)
+        .setDepth(0)
+        .setAngle(90)
+        .setOrigin(0.399)
+        .setFlipY(true)
         .setScale(1)
         .setInteractive();
 
@@ -2443,7 +2446,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         messycodelolz: "Stop looking through the awful code!!!",
         nyaw: "...Excuse me?!",
         fade: "Amethyst doesn't know how fade animations work.",
-        alwaysending: "Achievement? What achievement?"
+        freeicon: "Achievement? What achievement?",
+        rohanis0000: "Yeah, no he sucks. I called Rub Rub to sic em earlier.",
+        pinkdev: "The absolute GOAT!!!!... I learned that word from him.",
+        bread: "Yum... Wait thats a person??"
       };
       const spookysays = [  
         "How did you get in here?!", 

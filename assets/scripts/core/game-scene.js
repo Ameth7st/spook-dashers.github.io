@@ -4267,6 +4267,11 @@ _buildSettingsPopup() {
             (v) => window.solidWave = v
         );
         
+        createToggle(container, column1X, startY + (spacingY * 5), "Show CPS",
+            () => window.showCPS,
+            (v) => window.showCPS = v
+        );
+
         createToggle(container, column2X, startY, "Create Object ID labels", 
             () => window.createObjectIds, 
             (v) => window.createObjectIds = v,
@@ -4277,11 +4282,6 @@ _buildSettingsPopup() {
             () => window.showObjectIds, 
             (v) => window.showObjectIds = v,
             null, 17
-        );
-
-        createToggle(container, column1X, startY + (spacingY * 5), "Show CPS",
-            () => window.showCPS,
-            (v) => window.showCPS = v
         );
 
         createToggle(container, column2X, startY + (spacingY * 2),"Show Gravity", 

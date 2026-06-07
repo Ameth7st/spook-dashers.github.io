@@ -118,7 +118,7 @@ class MacroBot {
 
     this.meta = {
       author: "Web Dashers",
-      level: "", // ill fix ts later
+      level: "", // ill fix ts later... FIX TS NOW!
       version: 1
     };
   }
@@ -286,6 +286,41 @@ class GameScene extends Phaser.Scene {
     });
   }
   create() {
+
+    try {
+      if (!Phaser.GameObjects.GameObject.prototype.__stretchXDefined) {
+        Object.defineProperty(Phaser.GameObjects.GameObject.prototype, 'stretchX', {
+          configurable: true,
+          get() { return !!this._stretchX; },
+          set(v) {
+            const enable = !!v;
+            const was = !!this._stretchX;
+            this._stretchX = enable;
+            if (enable && !was) {
+              this._origScaleX = (this.scaleX !== undefined ? this.scaleX : 1);
+              const factor = this._stretchFactor || 1.2;
+              if (typeof this.setScale === 'function') this.setScale(this._origScaleX * factor, this.scaleY || 1);
+            } else if (!enable && was) {
+              if (typeof this.setScale === 'function') this.setScale(this._origScaleX || 1, this.scaleY || 1);
+            }
+          }
+        });
+
+        Object.defineProperty(Phaser.GameObjects.GameObject.prototype, 'stretchFactor', {
+          configurable: true,
+          get() { return this._stretchFactor || 1.2; },
+          set(v) {
+            this._stretchFactor = Number(v) || 1.0;
+            if (this._stretchX) {
+              if (typeof this.setScale === 'function') this.setScale((this._origScaleX || 1) * this._stretchFactor, this.scaleY || 1);
+            }
+          }
+        });
+
+        Phaser.GameObjects.GameObject.prototype.__stretchXDefined = true;
+      }
+    } catch (e) {
+    }
     this._bgSpeedX = 0.1;
     this._bgSpeedY = 0.1;
     this._menuCameraX = -centerX;
@@ -305,6 +340,7 @@ class GameScene extends Phaser.Scene {
     this._level = new window.LevelObject(this, this._cameraXRef);
     this._orbGfx = null;
     this._orbGfxTimer = 0;
+    this._gravityArrow = null;
     this._player = new PlayerObject(this, this._state, this._level);
     this._state2 = new PlayerState();
     this._player2 = new PlayerObject(this, this._state2, this._level);
@@ -346,6 +382,7 @@ class GameScene extends Phaser.Scene {
       }
     }
     this._level.createEndPortal(this);
+    this._createGravityArrow();
     this._glitterCenterX = 0;
     this._glitterCenterY = T;
     this._glitterEmitter = this.add.particles(0, 0, "GJ_WebSheet", {
@@ -2422,14 +2459,16 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         overlay.add([secretPlayLabel, secretPlayButton]);
       };
 
-      const lockSprite = this.add.image(cx, sh * 0.56, "GJ_GameSheet03", "GJ_secretLock_001.png")
+      const lockSprite = this.add.image(cx, sh * 0.55, "GJ_GameSheet03", "GJ_secretLock_001.png")
         .setScrollFactor(0)
         .setDepth(0)
         .setAngle(90)
-        .setOrigin(0.399)
+        .setOrigin(0.4)
         .setFlipY(true)
-        .setScale(1)
+        .setScale(0.75)
         .setInteractive();
+
+        lockSprite.stretchX = true; lockSprite.stretchFactor = 2;
 
       const codeResponses = {
         amethyst: "Fine, Fine. Take this level and leave!!!",
@@ -2564,7 +2603,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         lockMessageIndex = (lockMessageIndex + 1) % spookysays.length;
       };
 
-      this._makeBouncyButton(lockSprite, 1, () => {
+      this._makeBouncyButton(lockSprite, 0.85, () => {
         _spookytalk();
       });
       this._makeBouncyButton(backBtn, 1, () => {
@@ -4033,6 +4072,25 @@ _buildSettingsPopup() {
             () => window.showCPS, 
             (v) => window.showCPS = v
         );
+
+        createToggle(container, column2X, startY, "Show Gravity", 
+            () => window.showGravityArrow, 
+            (v) => {
+                window.showGravityArrow = v;
+                localStorage.setItem("showGravityArrow", v.toString());
+                if (this._gravityArrow) {
+                    this._gravityArrow.setVisible(v);
+                }
+            }
+        );
+
+        const gravityInfoBtn = this.add.image(column2X - 157, startY - 37, "GJ_GameSheet03", "GJ_infoIcon_001.png")
+            .setScale(0.45)
+            .setAngle(90)
+            .setInteractive();
+        container.add(gravityInfoBtn);
+        this._makeBouncyButton(gravityInfoBtn, 0.55, () => this._buildGravityArrowInfoPopup());
+        //istg i have the messiest coding ever im having trouble reading my own code -amethyst
     };
 
     const buildPage = (idx) => {
@@ -4067,6 +4125,7 @@ _buildSettingsPopup() {
   _saveSettings() {
     const settings = {
         noclip: window.noClip,
+        showGravityArrow: window.showGravityArrow,
         showPercentage: window.showPercentage,
         percentDecimals: window.percentageDecimals,
         showHitboxes: window.showHitboxes,
@@ -4087,6 +4146,7 @@ _buildSettingsPopup() {
     const saved = localStorage.getItem("gd_settings");
     const defaults = {
         noclip: false,
+        showGravityArrow: false,
         showPercentage: true,
         percentDecimals: false,
         showHitboxes: false,
@@ -4105,6 +4165,7 @@ _buildSettingsPopup() {
     const data = saved ? JSON.parse(saved) : defaults;
 
     window.noClip = data.noclip;
+    window.showGravityArrow = data.showGravityArrow;
     window.showPercentage = data.showPercentage;
     window.percentageDecimals = data.percentDecimals;
     window.showHitboxes = data.showHitboxes;
@@ -4822,6 +4883,59 @@ _buildSettingsPopup() {
       this._featuredInfoPopup = null;
     }
   }
+  _buildGravityArrowInfoPopup() {
+    if (this._gravityArrowInfoPopup) {
+      return;
+    }
+    const xPos = screenWidth / 2;
+    const centerY = screenHeight / 2;
+    this._gravityArrowInfoPopup = this.add.container(0, 0).setScrollFactor(0).setDepth(1000);
+    const background = this.add.rectangle(xPos, centerY, screenWidth, screenHeight, 0, 100 / 255);
+    background.setInteractive();
+    this._gravityArrowInfoPopup.add(background);
+    this.input.keyboard.once('keydown-ESC', () => this._closeGravityArrowInfoPopup());
+    const bounceContainer = this.add.container(xPos, centerY).setScale(0);
+    this._gravityArrowInfoPopup.add(bounceContainer);
+    const cornerRadius = this.textures.get("square01_001").source[0].width * 0.325;
+    const panelBg = this._drawScale9(0, 0, 700, 300, "square01_001", cornerRadius, 16777215, 1);
+    bounceContainer.add(panelBg);
+    const title = this.add.bitmapText(0, -98, "goldFont", "Info", 46).setOrigin(0.5, 0.5);
+    bounceContainer.add(title);
+    const body = this.add.text(0, -5, "Adds an arrow above/below the player showing\n where the gravity is pointing currently.", {
+      fontSize: "30px",
+      fontFamily: "Arial",
+      color: "#ffffff",
+      align: "center",
+      lineSpacing: 4
+    }).setOrigin(0.5, 0.5);
+    bounceContainer.add(body);
+    const okGroup = this.add.container(-5, 95);
+    const okBtnW = 90, okBtnH = 55;
+    const okBtnBorder = this.textures.get("GJ_button01").source[0].width * 0.3;
+    const okBtn9 = this._drawScale9(0, 0, okBtnW, okBtnH, "GJ_button01", okBtnBorder, 0xffffff, 1);
+    const okBtn = this.add.rectangle(0, 0, okBtnW, okBtnH).setInteractive();
+    okGroup.add(okBtn9);
+    okGroup.add(okBtn);
+    const okLabel = this.add.bitmapText(-3, -4, "goldFont", "OK", 44).setOrigin(0.5, 0.5);
+    okGroup.add(okLabel);
+    bounceContainer.add(okGroup);
+    okBtn.on("pointerdown", () => { okGroup._pressed = true; this.tweens.killTweensOf(okGroup); this.tweens.add({ targets: okGroup, scaleX: 1.26, scaleY: 1.26, duration: 300, ease: "Bounce.Out" }); });
+    okBtn.on("pointerout", () => { if (okGroup._pressed) { okGroup._pressed = false; this.tweens.killTweensOf(okGroup); this.tweens.add({ targets: okGroup, scaleX: 1, scaleY: 1, duration: 400, ease: "Bounce.Out" }); } });
+    okBtn.on("pointerup", () => { if (okGroup._pressed) { okGroup._pressed = false; this.tweens.killTweensOf(okGroup); okGroup.setScale(1); this._closeGravityArrowInfoPopup(); } });
+    this.tweens.add({
+      targets: bounceContainer,
+      scale: { from: 0, to: 1 },
+      duration: 660,
+      ease: "Elastic.Out",
+      easeParams: [1, 0.6]
+    });
+  }
+  _closeGravityArrowInfoPopup() {
+    if (this._gravityArrowInfoPopup) {
+      this._gravityArrowInfoPopup.destroy();
+      this._gravityArrowInfoPopup = null;
+    }
+  }
   _expandHitArea(_0x122213, _0x37180a) {
     const _0x46ea45 = _0x122213.width;
     const _0x43b461 = _0x122213.height;
@@ -4830,36 +4944,63 @@ _buildSettingsPopup() {
     _0x122213.input.hitArea.setTo(-_0x960250, -_0x3f88a1, _0x46ea45 + _0x960250 * 2, _0x43b461 + _0x3f88a1 * 2);
   }
   _makeBouncyButton(textureX, _0x57b645, _0x2f13d0, _0xda0c21) {
-    const _0x396ca0 = _0x57b645 * 1.26;
+    const multiplier = 1.26;
+    const getBaseScales = (obj) => {
+      const scaleX = typeof obj.scaleX === 'number' ? obj.scaleX : _0x57b645;
+      const scaleY = typeof obj.scaleY === 'number' ? obj.scaleY : _0x57b645;
+      return {
+        baseX: scaleX,
+        baseY: scaleY
+      };
+    };
+
+    const getBounceFactor = (obj) => {
+      return (typeof obj.bouncyScaleFactor === 'number' && obj.bouncyScaleFactor > 0)
+        ? obj.bouncyScaleFactor
+        : multiplier;
+    };
+
     textureX.on("pointerdown", () => {
       if (!_0xda0c21 || !!_0xda0c21()) {
         textureX._pressed = true;
-        this.tweens.killTweensOf(textureX, "scale");
+        this.tweens.killTweensOf(textureX);
+        const { baseX, baseY } = getBaseScales(textureX);
+        textureX._bouncyBaseX = baseX;
+        textureX._bouncyBaseY = baseY;
+        const bounceFactor = getBounceFactor(textureX);
         this.tweens.add({
           targets: textureX,
-          scale: _0x396ca0,
+          scaleX: baseX * bounceFactor,
+          scaleY: baseY * bounceFactor,
           duration: 300,
           ease: "Bounce.Out"
         });
       }
     });
+
     textureX.on("pointerout", (pointer) => {
       if (textureX._pressed) {
         textureX._pressed = false;
-        this.tweens.killTweensOf(textureX, "scale");
+        this.tweens.killTweensOf(textureX);
+        const baseX = textureX._bouncyBaseX !== undefined ? textureX._bouncyBaseX : getBaseScales(textureX).baseX;
+        const baseY = textureX._bouncyBaseY !== undefined ? textureX._bouncyBaseY : getBaseScales(textureX).baseY;
         this.tweens.add({
           targets: textureX,
-          scale: _0x57b645,
+          scaleX: baseX,
+          scaleY: baseY,
           duration: 400,
           ease: "Bounce.Out"
         });
       }
     });
+
     textureX.on("pointerup", () => {
       if (textureX._pressed) {
         textureX._pressed = false;
         this.tweens.killTweensOf(textureX);
-        textureX.setScale(_0x57b645);
+        const baseX = textureX._bouncyBaseX !== undefined ? textureX._bouncyBaseX : getBaseScales(textureX).baseX;
+        const baseY = textureX._bouncyBaseY !== undefined ? textureX._bouncyBaseY : getBaseScales(textureX).baseY;
+        if (typeof textureX.setScale === 'function') textureX.setScale(baseX, baseY);
         _0x2f13d0();
       }
     });
@@ -6322,6 +6463,7 @@ _buildSettingsPopup() {
     if (this._isDual && !this._state2.isDead) {
       this._player2.syncSprites(this._cameraX, this._cameraY, deltaTime / 1000, this._getMirrorXOffset(playerScreenX));
     }
+    this._updateGravityArrow();
     this._applyMirrorEffect();
   }
 
@@ -7684,6 +7826,7 @@ _applyMirrorEffect() {
   }
 
     _triggerEndPortal() {
+    this._fadeOutGravityArrow();
     this._player.playEndAnimation(this._level.endXPos, () => this._levelComplete(), this._endPortalGameY);
   }
   _levelComplete() {
@@ -7711,8 +7854,26 @@ _applyMirrorEffect() {
     for (let _0x481f7c = 0; _0x481f7c < 5; _0x481f7c++) {
       this.time.delayedCall(_0x481f7c * 50, () => circleEffect(this, _0x356782, _0x2d967b, 10, screenWidth, 500, false, true, window.mainColor));
     }
+    this._fadeOutGravityArrow();
     circleEffect(this, _0x356782, _0x2d967b, 10, 1000, 500, true, false, window.mainColor);
     this._showCompleteEffect();
+  }
+  _fadeOutGravityArrow() {
+    if (!this._gravityArrow || !this._gravityArrow.scene) {
+      return;
+    }
+    this.tweens.add({
+      targets: this._gravityArrow,
+      alpha: 0,
+      duration: 400,
+      ease: "Quad.Out",
+      onComplete: () => {
+        if (this._gravityArrow) {
+          this._gravityArrow.setVisible(false);
+          this._gravityArrow.alpha = 1;
+        }
+      }
+    });
   }
   _showCompleteEffect() {
     this._audio.fadeOutMusic(1500);
@@ -8230,6 +8391,49 @@ _applyMirrorEffect() {
       },
       onComplete: _0x272eb1
     });
+  }
+  _createGravityArrow() {
+    if (this._gravityArrow) {
+      return;
+    }
+
+    this._gravityArrow = this.add.sprite(0, 0, "GJ_GameSheet03", "edit_downBtn_001.png")
+      .setOrigin(0.5, 0.5)
+      .setScale(1)
+      .setDepth(-8)
+      .setScrollFactor(0)
+      .setVisible(false);
+  }
+  _updateGravityArrow() {
+    if (!this._gravityArrow) {
+      if (window.showGravityArrow) {
+        this._createGravityArrow();
+      } else {
+        return;
+      }
+    }
+
+    if (!window.showGravityArrow || this._menuActive) {
+      this._gravityArrow.setVisible(false);
+      return;
+    }
+
+    if (!this._gravityArrow.scene) {
+      this._gravityArrow = null;
+      return;
+    }
+
+    this._gravityArrow.setVisible(true);
+
+    const playerScreenX = this._playerWorldX - this._cameraX;
+    const playerScreenY = b(this._state.y) + this._cameraY;
+    const ARROW_DISTANCE = 64;
+    const gravityDirection = this._state.gravityFlipped ? -1 : 1;
+    const arrowX = playerScreenX;
+    const arrowY = playerScreenY + (ARROW_DISTANCE * gravityDirection);
+
+    this._gravityArrow.setPosition(arrowX, arrowY);
+    this._gravityArrow.rotation = this._state.gravityFlipped ? Math.PI : 0;
   }
   _showStatsScreen() {
     if (this._pauseBtn) {
